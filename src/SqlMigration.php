@@ -7,6 +7,7 @@ namespace mepihindeveloper\components;
 use DateTime;
 use mepihindeveloper\components\exceptions\SqlMigrationException;
 use mepihindeveloper\components\interfaces\{DatabaseInterface, SqlMigrationInterface};
+use PDOException;
 use RuntimeException;
 
 /**
@@ -186,13 +187,13 @@ class SqlMigration implements SqlMigrationInterface {
 				throw new RuntimeException('Ошибка поиска/чтения миграции');
 			}
 			
-			if (!empty($migrationContent)) {
-				$this->database->beginTransaction();
-				$this->database->execute($migrationContent);
-				$this->database->commit();
-			}
-			
 			try {
+				if (!empty($migrationContent)) {
+					$this->database->beginTransaction();
+					$this->database->execute($migrationContent);
+					$this->database->commit();
+				}
+				
 				if ($type === self::UP) {
 					$this->addHistory($migration['name']);
 				} else {
@@ -200,8 +201,8 @@ class SqlMigration implements SqlMigrationInterface {
 				}
 				
 				$migrationInfo['success'][] = $migration;
-			} catch (SqlMigrationException $exception) {
-				$migrationInfo['error'][] = $migration;
+			} catch (SqlMigrationException | PDOException $exception) {
+				$migrationInfo['error'][] = array_merge($migration, ['errorMessage' => $exception->getMessage()]);
 				
 				break;
 			}

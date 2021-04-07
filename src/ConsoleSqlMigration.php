@@ -64,16 +64,19 @@ class ConsoleSqlMigration extends SqlMigration {
 			exit;
 		}
 		
-		foreach ($migrations['success'] as $successMigration) {
-			Console::writeLine("Миграция {$successMigration['name']} успешно отменена", Console::FG_GREEN);
-		}
-		
 		if (array_key_exists('error', $migrations)) {
 			foreach ($migrations['error'] as $errorMigration) {
-				Console::writeLine("Ошибка отмены миграции {$errorMigration['name']}", Console::FG_RED);
+				Console::writeLine("Ошибка отмены миграции {$errorMigration['name']} : " .
+					PHP_EOL .
+					$errorMigration['errorMessage'],
+					Console::FG_RED);
 			}
 			
 			exit;
+		}
+		
+		foreach ($migrations['success'] as $successMigration) {
+			Console::writeLine("Миграция {$successMigration['name']} успешно отменена", Console::FG_GREEN);
 		}
 		
 		return $migrations;
