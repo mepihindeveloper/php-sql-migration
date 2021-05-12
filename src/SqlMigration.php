@@ -29,9 +29,9 @@ class SqlMigration implements SqlMigrationInterface {
 	 */
 	protected array $settings;
 	/**
-	 * @var null|DatabaseInterface Компонент работы с базой данных
+	 * @var DatabaseInterface Компонент работы с базой данных
 	 */
-	protected ?DatabaseInterface $database;
+	protected DatabaseInterface $database;
 	
 	/**
 	 * SqlMigration constructor.
@@ -86,7 +86,6 @@ class SqlMigration implements SqlMigrationInterface {
 	
 	public function __destruct() {
 		$this->database->closeConnection();
-		$this->database = null;
 	}
 	
 	/**
@@ -99,10 +98,7 @@ class SqlMigration implements SqlMigrationInterface {
 			return [];
 		}
 		
-		$executeListCount = count($executeList);
-		$executeCount = $count === 0 ? $executeListCount : min($count, $executeListCount);
-		
-		return $this->execute($executeList, $executeCount, self::UP);
+		return $this->execute($executeList, $count, self::UP);
 	}
 	
 	/**
@@ -175,9 +171,12 @@ class SqlMigration implements SqlMigrationInterface {
 	 * @throws RuntimeException
 	 */
 	protected function execute(array $list, int $count, string $type): array {
+		$executeListCount = count($list);
+		$executeCount = $count === 0 ? $executeListCount : min($count, $executeListCount);
+		
 		$migrationInfo = [];
 		
-		for ($index = 0; $index < $count; $index++) {
+		for ($index = 0; $index < $executeCount; $index++) {
 			$migration = $list[$index];
 			$migration['path'] = array_key_exists('path', $migration) ? $migration['path'] :
 				"{$this->settings['path']}/{$migration['name']}";
@@ -227,7 +226,7 @@ class SqlMigration implements SqlMigrationInterface {
 		SQL;
 		
 		if (!$this->database->execute($sql, ['name' => $name, 'apply_time' => time()])) {
-			throw new SqlMigrationException("Ошибка применения миграция {$name}");
+			throw new SqlMigrationException("Ошибка применения миграции {$name}");
 		}
 		
 		return true;
@@ -278,7 +277,7 @@ class SqlMigration implements SqlMigrationInterface {
 		$historyList = $this->getHistoryList($limit);
 		
 		if (empty($historyList)) {
-			return ['История миграций пуста'];
+			return [];
 		}
 		
 		$messages = [];
@@ -295,7 +294,7 @@ class SqlMigration implements SqlMigrationInterface {
 	 *
 	 * @throws RuntimeException|SqlMigrationException
 	 */
-	public function create(string $name): bool {
+	public function create(string $name): void {
 		$this->validateName($name);
 		
 		$migrationMame = $this->generateName($name);
@@ -312,8 +311,6 @@ class SqlMigration implements SqlMigrationInterface {
 		if (!file_put_contents($path . '/down.sql', '') === false) {
 			throw new RuntimeException("Ошибка создания файла миграции {$path}/down.sql");
 		}
-		
-		return true;
 	}
 	
 	/**

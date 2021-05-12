@@ -40,16 +40,17 @@ class ConsoleSqlMigration extends SqlMigration {
 			exit;
 		}
 		
-		foreach ($migrations['success'] as $successMigration) {
-			Console::writeLine("Миграция {$successMigration['name']} успешно применена", Console::FG_GREEN);
+		if (array_key_exists('success', $migrations)) {
+			foreach ($migrations['success'] as $successMigration) {
+				Console::writeLine("Миграция {$successMigration['name']} успешно применена", Console::FG_GREEN);
+			}
 		}
 		
 		if (array_key_exists('error', $migrations)) {
 			foreach ($migrations['error'] as $errorMigration) {
 				Console::writeLine("Ошибка применения миграции {$errorMigration['name']}", Console::FG_RED);
+				Console::writeLine($errorMigration['errorMessage'], Console::FG_WHITE);
 			}
-			
-			exit;
 		}
 		
 		return $migrations;
@@ -82,22 +83,22 @@ class ConsoleSqlMigration extends SqlMigration {
 		return $migrations;
 	}
 	
-	public function create(string $name): bool {
+	public function create(string $name): void {
 		try {
 			parent::create($name);
 			
 			Console::writeLine("Миграция {$name} успешно создана");
 		} catch (RuntimeException | SqlMigrationException $exception) {
 			Console::writeLine($exception->getMessage(), Console::FG_RED);
-			
-			return false;
 		}
-		
-		return true;
 	}
 	
 	public function history(int $limit = 0): array {
 		$historyList = parent::history($limit);
+		
+		if (empty($historyList)) {
+			Console::writeLine('История миграций пуста');
+		}
 		
 		foreach ($historyList as $historyRow) {
 			Console::writeLine($historyRow);

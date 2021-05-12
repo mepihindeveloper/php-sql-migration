@@ -20,6 +20,59 @@
 Компонент самостоятельно проверяет и создает необходимые (указанные) схемы, таблицы и папки при наличии заранее
 определенных разрешений (прав). Для корректной работы с базой данных необходимо заранее установить соединение с ней.
 
+Для использования компонента достаточно создать экземпляр класса и вызвать нужный метод:
+
+```php
+$sqlMigration = new SqlMigration($database, [
+	'schema' => 'migrations',
+	'table' => 'migration',
+	'path' => 'migrations'
+]);
+
+$sqlMigration->up();
+```
+
+Для работы с консолью достаточно создать файл управления миграциями и вызвать его через `php FILE ACTION PARAMS`:
+
+1. `php migrate up`
+2. `php migrate down 2`
+
+Файл автоматической обработки таких запросов может выглядеть следующим образом:
+
+```php
+#!/usr/bin/env php
+<?php
+declare(strict_types = 1);
+
+use mepihindeveloper\components\{Console, ConsoleSqlMigration, Database};
+
+require_once 'vendor/autoload.php';
+
+$database = new Database([
+	'dbms' => 'pgsql',
+	'host' => 'localhost',
+	'dbname' => 'php',
+	'user' => 'www-data',
+	'password' => 'pass'
+]);
+$database->connect();
+$sqlMigration = new ConsoleSqlMigration($database, [
+	'schema' => 'migrations',
+	'table' => 'migration',
+	'path' => 'migrations'
+]);
+
+$method = $argv[1];
+$params = $argv[2] ?? null;
+
+if (!method_exists($sqlMigration, $method)) {
+	Console::writeLine("Неопознанная команда '{$method}'", Console::FG_RED);
+	exit;
+}
+
+return is_null($params) ? $sqlMigration->$method() : $sqlMigration->$method($params);
+```
+
 # Структура
 
 ```
@@ -41,15 +94,15 @@ src/
 
 | Метод                                                             | Аргументы                                                                                      | Возвращаемые данные | Исключения                              | Описание                                                                    |
 |-------------------------------------------------------------------|------------------------------------------------------------------------------------------------|---------------------|-----------------------------------------|-----------------------------------------------------------------------------|
-| public function up(int $count = 0)                                | $count Количество миграция (0 - относительно всех)                                             | array               | SqlMigrationException                   | Применяет указанное количество миграций                                     |
-| public function down(int $count = 0)                              | $count Количество миграция (0 - относительно всех)                                             | array               | SqlMigrationException                   | Отменяет указанное количество миграций                                      |
+| public function up(int $count = 0)                                | $count Количество миграций (0 - относительно всех)                                             | array               | SqlMigrationException                   | Применяет указанное количество миграций                                     |
+| public function down(int $count = 0)                              | $count Количество миграций (0 - относительно всех)                                             | array               | SqlMigrationException                   | Отменяет указанное количество миграций                                      |
 | public function history(int $limit = 0)                           | $limit Ограничение длины списка (null - полный список)                                         | array               |                                         | Возвращает список сообщений о примененных миграций                          |
-| public function create(string $name)                              | $name Название миграции                                                                        | bool                | RuntimeException\|SqlMigrationException | Создает новую миграцию и возвращает сообщение об успешном создании миграции |
+| public function create(string $name)                              | $name Название миграции                                                                        | void                | RuntimeException\|SqlMigrationException | Создает новую миграцию и возвращает сообщение об успешном создании миграции |
 | __construct(DatabaseInterface $database, array $settings)         | $database Компонент работы с базой данных; array $settings Массив настроек                     |                     | SqlMigrationException                   | Конструктор класса                                                          |
 | public function initSchemaAndTable()                              |                                                                                                | bool                | SqlMigrationException                   | Создает схему и таблицу в случае их отсутствия                              |
 | public function __destruct()                                      |                                                                                                |                     |                                         | Деструктор класса                                                           |
 | protected function getNotAppliedList()                            |                                                                                                | array               |                                         | Возвращает список не примененных миграций                                   |
-| protected function getHistoryList(int $limit = 0)                 | $limit Ограничение длины списка (null - полный список)                                         | array               |                                         | Возвращает список примененных миграций                                      |
+| protected function getHistoryList(int $limit = 0)                 | $limit Ограничение длины списка (0 - полный список)                                         | array               |                                         | Возвращает список примененных миграций                                      |
 | protected function execute(array $list, int $count, string $type) | $list Массив миграций; $count Количество миграций для применения; $type Тип миграции (up/down) | array               | RuntimeException                        | Выполняет миграции                                                          |
 | protected function addHistory(string $name)                       | $name Наименование миграции                                                                    | bool                | SqlMigrationException                   | Добавляет запись в таблицу миграций                                         |
 | protected function removeHistory(string $name)                    | $name Наименование миграции                                                                    | bool                | SqlMigrationException                   | Удаляет миграцию из таблицы миграций                                        |
